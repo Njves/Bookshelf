@@ -1,0 +1,30 @@
+{% extends 'layout/main.html' %}
+{% block content %}
+    <div class="col-sm-3">
+        <!-- Это карточка -->
+        <div class="card" style="width: 18rem">
+            <img class="card-img-top" src="{{ book.cover.url }}" alt="Card image cap">
+            <div class="card-body">
+                <h5 class="card-title">{{ book.title }}</h5>
+                <p class="card-text">{{ book.description }}</p>
+                <a href="{% url 'detail' book.pk %}" class="btn btn-primary"
+                   id="card_action_open">Open</a><br />
+
+            </div>
+            <!-- Это конец карточки -->
+        </div>
+    </div>
+    {% if user.is_authenticated %}
+        <form action="{% url 'write_comment' %}" method="POST">
+            <input type="hidden" value="{{ user.username }}" name="user">
+            <input type="hidden" value="{{ book.pk }}" name="book">
+            {{ comment_form.as_p }}
+            {% csrf_token %}
+            <p><input type="submit" value="Написать"></p>
+        </form>
+    {% endif %}
+    {% for comment in comments %}
+        {{ comment.author }}
+        {{ comment.text }}<br/>
+    {% endfor %}
+{% endblock %}

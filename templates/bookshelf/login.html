@@ -1,0 +1,13 @@
+{% extends "layout/main.html" %}
+{% block title %}Log-in{% endblock %}
+{% block content %}
+    <div class="container d-flex align-items-center justify-content-center flex-column">
+        <h1>Логин</h1>
+        <p>Введите ваши данные в форму логина:</p>
+        <form action="" method="post">
+            {{ form.as_p }}
+            {% csrf_token %}
+            <p><input type="submit" value="Log-in"></p>
+        </form>
+    </div>
+{% endblock %}

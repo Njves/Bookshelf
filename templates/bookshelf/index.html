@@ -1,0 +1,46 @@
+{% extends 'layout/main.html' %}
+{% block content %}
+    <form class="search p-3" action="" method="GET" id="search_form" style="width: 33%">
+        <div class="input-group mb-3">
+            <input type="text" class="form-control" placeholder="Поиск" aria-label="Username"
+                   aria-describedby="basic-addon1" name="query" id="input_search" value="{{ query }}">
+            <button class="input-group-text" id="basic-addon1" type="submit">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="32" fill="currentColor"
+                     class="bi bi-search" viewBox="0 0 16 16">
+                    <path
+                            d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
+                </svg>
+            </button>
+        </div>
+    </form>
+    <div class="row p-3">
+        {% for book in books %}
+            <div class="col-sm-3">
+                <!-- Это карточка -->
+                <div class="card" style="width: 18rem">
+                    <img class="card-img-top" src="{{ book.cover.url }}" alt="Card image cap">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ book.title }}</h5>
+                        <p class="card-text">{{ book.description }}</p>
+                        <a href="{% url 'detail' book.pk %}" class="btn btn-primary mb-1"
+                           id="card_action_open">Открыть</a><br />
+                        {% if user.is_authenticated %}
+                            <form method="POST" action="{% url 'remove' book.pk %}" class="mb-1">
+                                {% csrf_token %}
+                                <input type="text" name="id" id="card_action_open" value="{{ book.pk }}" hidden>
+
+                                <button type="submit" class="btn btn-danger">Удалить</button>
+                            </form>
+                        {% endif %}
+                        {% if user.is_authenticated %}
+                            <a href="{% url 'edit' book.pk %}" class="btn btn-primary mb-1"
+                               id="card_action_edit">Редактировать</a><br />
+                        {% endif %}
+                    </div>
+
+                    <!-- Это конец карточки -->
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% endblock %}
