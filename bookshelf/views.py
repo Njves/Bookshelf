@@ -1,33 +1,38 @@
 from bookshelf.forms import BookForm, LoginForm, UserRegistrationForm, CommentForm
 from django.contrib import messages
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, get_user
 from django.contrib.auth.models import User
 from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank, TrigramSimilarity
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect
 from django.urls import reverse_lazy
 from django.views.generic import DetailView, CreateView, UpdateView
-from rest_framework import viewsets
 
-from .serializers import BookSerializer
 from .models import Book, Comment, Author
-
-
-# from haystack.query import SearchQuerySet
+from .serializers import BookSerializer
 
 
 def books(request):
+    """
+    Главная страница, отображает все книги из бд
+    принимает на параметр query, который осуществляет
+    полнотекстовый неточный поиск
+    :param request: запрос
+    :return:
+    """
     query = request.GET.get('query', '')
-    search_query = request.GET.get('query', '')
     results = Book.objects.all()
-    if search_query:
-        # Создаем объект SearchQuery для выполнения поиска
+    if query:
+        # SearchVector представляет собой отсортированный список различных лексем , то есть слов,
+        # нормализованных для объединения различных вариантов одного и того же слова
         search_vector = SearchVector('title', 'author__name')
-
-        # Создаем объект SearchQuery для запроса
-        search_query = SearchQuery(search_query)
+        # Оборачиваем запрос в SearchQuery
+        search_query = SearchQuery(query)
+        # Создаем триграммы для выполнения неточного поиска
+        # По двум столбцам, названию книги и имени автора
         trigram_similarity = TrigramSimilarity('title', query)
         trigram_similarity_author = TrigramSimilarity('author__name', query)
-        # Выполняем поиск и упорядочиваем результаты по релевантности
+        # Фильтруем по схожести триграмм с коэфом 0.3 и сортируем
+        # по убывания коэфа
         results = Book.objects.annotate(
             search=search_vector,
             rank=SearchRank(search_vector, search_query),
@@ -37,13 +42,28 @@ def books(request):
     return render(request, 'bookshelf/index.html', {'books': results, 'query': query})
 
 
-def remove_book(request):
+def remove_book(request, id):
+    """
+    Удаляет книгу из базы данных и удаляет
+    прикрепленную к ней фото файл
+    :param request: запрос
+    :param id: идентификатор книги
+    :return: редирект на главную страницу
+    """
     if 'id' in request.POST:
-        Book.objects.filter(pk=int(request.POST['id'])).first().delete()
+        removed_book = Book.objects.filter(pk=int(request.POST['id'])).first()
+        removed_book.cover.delete(False)
+        removed_book.delete()
     return redirect('main')
 
 
 def user_login(request):
+    """
+    Выполняет логин пользователя, принимает
+    юзернейм и пароль
+    :param request: объект запроса
+    :return:
+    """
     if request.method == 'POST':
         form = LoginForm(request.POST)
         if form.is_valid():
@@ -64,11 +84,22 @@ def user_login(request):
 
 
 def logout_view(request):
+    """
+    Выходит из страницы пользователя
+    :param request: запрос
+    :return:
+    """
     logout(request)
     return redirect('main')
 
 
 def register(request):
+    """
+    Регистрирует пользователя в системе
+    :param request: запрос
+    :return: редирект на главную страницу в случае успеха
+    или возвращает ошибку
+    """
     if request.method == 'POST':
         user_form = UserRegistrationForm(request.POST)
         if user_form.is_valid():
@@ -89,9 +120,16 @@ def register(request):
 
 
 def write_comment(request):
+    """
+    Пишет комментарий в бд
+    принимает id пользователя и id книги и текст
+    комментария
+    :param request:
+    :return:
+    """
     if request.method == 'POST':
         comment_form = CommentForm(request.POST)
-        if comment_form.is_valid():
+        if comment_form.is_valid() and get_user(request).is_authenticated:
             cd = comment_form.cleaned_data
             if 'user' in request.POST and 'book' in request.POST:
                 Comment(author=User.objects.filter(username=request.POST['user']).first(),
@@ -115,6 +153,7 @@ class BookDetailView(DetailView):
         context['comments'] = Comment.objects.filter(book=self.object).all()
         context['comment_form'] = CommentForm()
         return context
+
 
 class AuthorDetailView(DetailView):
     model = Author
