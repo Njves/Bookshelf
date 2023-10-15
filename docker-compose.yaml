@@ -1,0 +1,19 @@
+version: "3"
+
+services:
+  database:
+    image: postgres:latest
+    volumes:
+      - bookshelf:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: admin
+      POSTGRES_USER: admin
+      POSTGRES_DB: bookshelf
+      POSTGRES_EXTENSIONS: pg_trgm
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-d", "bookshelf"]
+
+volumes:
+  bookshelf:

@@ -1,26 +1,40 @@
-from bookshelf.forms import SearchForm, BookForm, LoginForm, UserRegistrationForm, CommentForm
+from bookshelf.forms import BookForm, LoginForm, UserRegistrationForm, CommentForm
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
-from django.http import HttpResponse
-from django.shortcuts import render, redirect
+from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank, TrigramSimilarity
+from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse_lazy
 from django.views.generic import DetailView, CreateView, UpdateView
-# from haystack.query import SearchQuerySet
+from rest_framework import viewsets
 
-from .models import Book, Comment
+from .serializers import BookSerializer
+from .models import Book, Comment, Author
+
+
+# from haystack.query import SearchQuerySet
 
 
 def books(request):
-    # form = SearchForm()
-    # if 'query' in request.GET:
-    #     form = SearchForm(request.GET)
-    #     if form.is_valid():
-    #         cd = form.cleaned_data
-    #         results = SearchQuerySet().models(Book).filter(title=cd['query']).load_all()
-    #         # count total results
-    #         total_results = results.count()
-    return render(request, 'bookshelf/index.html', {'books': Book.objects.all()})
+    query = request.GET.get('query', '')
+    search_query = request.GET.get('query', '')
+    results = Book.objects.all()
+    if search_query:
+        # Создаем объект SearchQuery для выполнения поиска
+        search_vector = SearchVector('title', 'author__name')
+
+        # Создаем объект SearchQuery для запроса
+        search_query = SearchQuery(search_query)
+        trigram_similarity = TrigramSimilarity('title', query)
+        trigram_similarity_author = TrigramSimilarity('author__name', query)
+        # Выполняем поиск и упорядочиваем результаты по релевантности
+        results = Book.objects.annotate(
+            search=search_vector,
+            rank=SearchRank(search_vector, search_query),
+            similarity=trigram_similarity + trigram_similarity_author
+        ).filter(similarity__gt=0.3).order_by('-similarity')
+
+    return render(request, 'bookshelf/index.html', {'books': results, 'query': query})
 
 
 def remove_book(request):
@@ -41,9 +55,9 @@ def user_login(request):
                     messages.add_message(request, messages.INFO, "Успешно авторизован")
                     return redirect('main')
                 else:
-                    return HttpResponse('Disabled account')
+                    messages.add_message(request, messages.INFO, "Пользователь неактивен")
             else:
-                return HttpResponse('Invalid login')
+                messages.add_message(request, messages.INFO, "Неверные данные")
     else:
         form = LoginForm()
     return render(request, 'bookshelf/login.html', {'form': form})
@@ -102,6 +116,13 @@ class BookDetailView(DetailView):
         context['comment_form'] = CommentForm()
         return context
 
+class AuthorDetailView(DetailView):
+    model = Author
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        return context
+
 
 class BookCreateView(CreateView):
     template_name = 'bookshelf/book_create.html'
@@ -111,3 +132,17 @@ class BookCreateView(CreateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         return context
+
+
+from rest_framework import generics
+
+
+class BookViewSet(generics.ListAPIView):
+    queryset = Book.objects.all()
+    serializer_class = BookSerializer
+
+
+class BookDetailSet(generics.RetrieveAPIView):
+    queryset = Book.objects.all()
+    serializer_class = BookSerializer
+    lookup_field = 'pk'

@@ -2,6 +2,7 @@
 {% block content %}
     <form class="search p-3" action="" method="GET" id="search_form" style="width: 33%">
         <div class="input-group mb-3">
+
             <input type="text" class="form-control" placeholder="Поиск" aria-label="Username"
                    aria-describedby="basic-addon1" name="query" id="input_search" value="{{ query }}">
             <button class="input-group-text" id="basic-addon1" type="submit">
@@ -22,7 +23,8 @@
                     <div class="card-body">
                         <h5 class="card-title">{{ book.title }}</h5>
                         <p class="card-text">{{ book.description }}</p>
-                        <a href="{% url 'detail' book.pk %}" class="btn btn-primary mb-1"
+                        <p class="card-text">{{ book.author.name }}</p>
+                        <a href="{% url 'book-detail' book.pk %}" class="btn btn-primary mb-1"
                            id="card_action_open">Открыть</a><br />
                         {% if user.is_authenticated %}
                             <form method="POST" action="{% url 'remove' book.pk %}" class="mb-1">

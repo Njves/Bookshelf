@@ -7,7 +7,7 @@
             <div class="card-body">
                 <h5 class="card-title">{{ book.title }}</h5>
                 <p class="card-text">{{ book.description }}</p>
-                <a href="{% url 'detail' book.pk %}" class="btn btn-primary"
+                <a href="{% url 'book-detail' book.pk %}" class="btn btn-primary"
                    id="card_action_open">Open</a><br />
 
             </div>
